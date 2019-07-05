@@ -1,3 +1,4 @@
+use crate::material::*;
 use nalgebra::Vector3;
 
 pub struct Ray {
@@ -27,7 +28,7 @@ impl Ray {
     }
 }
 
-pub struct HitRecord {
+pub struct HitRecord<'a> {
     // The `t` for the ray. Guaranteed to satisfy `t_min <= t < t_max`.
     pub t: f32,
     // The position in worldspace where the ray hit the object.
@@ -35,6 +36,7 @@ pub struct HitRecord {
     // Surface normal at the hitpoint. This is optional because some objects,
     // like fog, can be hit but don't have normals.
     pub normal: Option<Vector3<f32>>,
+    pub material: &'a Box<dyn Material>,
 }
 
 pub trait Hittable: Send + Sync {
@@ -44,6 +46,7 @@ pub trait Hittable: Send + Sync {
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
+    pub material: Box<dyn Material>,
 }
 
 impl Hittable for Sphere {
@@ -64,6 +67,7 @@ impl Hittable for Sphere {
                         t,
                         pos,
                         normal: Some(normal),
+                        material: &self.material,
                     });
                 }
             }

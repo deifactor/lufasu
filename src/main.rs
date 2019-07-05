@@ -1,4 +1,5 @@
 mod geometry;
+mod material;
 
 use minifb::{Window, WindowOptions};
 use nalgebra::Vector3;
@@ -9,37 +10,72 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use geometry::*;
+use material::*;
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 400;
 // Number of per-pixel samples.
-const SAMPLE_COUNT: usize = 100;
+const SAMPLE_COUNT: usize = 1000;
+// Maximum number of bounces to use. After this, we assume the ray will be
+// black.
+const BOUNCES: usize = 50;
 
-pub fn color<T: Hittable, R: rand::Rng + ?Sized>(ray: &Ray, world: &T, rng: &mut R) -> LinSrgb {
-    if let Some(hit_record) = world.hits(ray, 0.0001, std::f32::INFINITY) {
-        let direction: Vector3<f32> =
-            hit_record.normal.unwrap() + Vector3::<f32>::from(rng.sample(UnitSphere));
-        color(&Ray::new(hit_record.pos, direction), world, rng) * 0.5
+pub fn color<T: Hittable, R: rand::Rng>(
+    ray: &Ray,
+    world: &T,
+    bounce: usize,
+    rng: &mut R,
+) -> LinSrgb {
+    if let Some(hit_record) = world.hits(ray, 0.001, std::f32::INFINITY) {
+        if bounce < BOUNCES {
+            if let Some(scattering) = hit_record.material.scatter(ray, &hit_record, rng) {
+                return scattering.attenuation
+                    * color(&scattering.scattered, world, bounce + 1, rng);
+            }
+        }
+        return LinSrgb::new(0.0, 0.0, 0.0);
     } else {
         let t = (ray.direction().y + 1.0) / 2.0;
         let white = LinSrgb::new(1.0, 1.0, 1.0);
-        let blue = LinSrgb::new(0.0, 0.0, 1.0);
+        let blue = LinSrgb::new(0.5, 0.7, 1.0);
         white.mix(&blue, t as f32)
     }
 }
 
 pub fn render_into(buf: &mut [u32]) {
-    let center_sphere = Sphere {
-        center: Vector3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-    };
-    let floor = Sphere {
-        center: Vector3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
-    };
     let scene = HittableList {
-        hittables: vec![Box::new(center_sphere), Box::new(floor)],
+        hittables: vec![
+            Box::new(Sphere {
+                center: Vector3::new(0.0, 0.0, -1.0),
+                radius: 0.5,
+                material: Box::new(Lambertian {
+                    albedo: LinSrgb::new(0.8, 0.3, 0.3),
+                }),
+            }),
+            Box::new(Sphere {
+                center: Vector3::new(0.0, -100.5, -1.0),
+                radius: 100.0,
+                material: Box::new(Lambertian {
+                    albedo: LinSrgb::new(0.8, 0.8, 0.0),
+                }),
+            }),
+            Box::new(Sphere {
+                center: Vector3::new(1.0, 0.0, -1.0),
+                radius: 0.5,
+                material: Box::new(Metal {
+                    albedo: LinSrgb::new(0.8, 0.6, 0.2),
+                }),
+            }),
+            Box::new(Sphere {
+                center: Vector3::new(-1.0, 0.0, -1.0),
+                radius: 0.5,
+                material: Box::new(Metal {
+                    albedo: LinSrgb::new(0.8, 0.8, 0.8),
+                }),
+            }),
+        ],
     };
+
     let camera = Camera {
         origin: Vector3::new(0.0, 0.0, 0.0),
         lower_left: Vector3::new(-2.0, -1.0, -1.0),
@@ -65,7 +101,7 @@ pub fn render_into(buf: &mut [u32]) {
                         let u = (col as f32 + rng.gen::<f32>()) / (WIDTH as f32);
                         let v = ((HEIGHT - 1 - row) as f32 + rng.gen::<f32>()) / (HEIGHT as f32);
                         let ray = camera.ray(u, v);
-                        color(&ray, &scene, &mut rng)
+                        color(&ray, &scene, 0, &mut rng)
                     })
                     .fold(LinSrgb::new(0.0, 0.0, 0.0), |a, b| a + b)
                     / (SAMPLE_COUNT as f32);
@@ -88,9 +124,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let elapsed = now.elapsed();
     window.update_with_buffer(&buffer)?;
     println!(
-        "Rendered in {:?} ({:?} per pixel)",
+        "Rendered in {:?} ({:?} per pixel, {:?} per ray)",
         elapsed,
-        elapsed / ((WIDTH * HEIGHT) as u32)
+        elapsed / ((WIDTH * HEIGHT) as u32),
+        elapsed / ((WIDTH * HEIGHT * SAMPLE_COUNT) as u32)
     );
 
     while window.is_open() && !window.is_key_down(minifb::Key::Escape) {
