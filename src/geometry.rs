@@ -71,3 +71,25 @@ impl Hittable for Sphere {
         None
     }
 }
+
+// A convenient way to hit-test a bunch of objects. The returned hit is the
+// first hitpoint among any elements.
+pub struct HittableList {
+    pub hittables: Vec<Box<dyn Hittable>>,
+}
+
+impl Hittable for HittableList {
+    fn hits(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        // There's probably a nicer way to do this with iterators, but I can't
+        // quite find it.
+        let mut best_rec: Option<HitRecord> = None;
+        for rec in self.hittables.iter().map(|h| h.hits(ray, t_min, t_max)) {
+            if let Some(rec) = rec {
+                if rec.t < best_rec.as_ref().map_or(std::f32::INFINITY, |r| r.t) {
+                    best_rec = Some(rec);
+                }
+            }
+        }
+        best_rec
+    }
+}

@@ -16,9 +16,16 @@ pub fn render_into(buf: &mut [u32]) {
     let horizontal = Vector3::new(4.0, 0.0, 0.0);
     let vertical = Vector3::new(0.0, 2.0, 0.0);
 
-    let sphere = Sphere {
+    let center_sphere = Sphere {
         center: Vector3::new(0.0, 0.0, -1.0),
         radius: 0.5,
+    };
+    let floor = Sphere {
+        center: Vector3::new(0.0, -100.5, -1.0),
+        radius: 100.0,
+    };
+    let scene = HittableList {
+        hittables: vec![Box::new(center_sphere), Box::new(floor)],
     };
     for col in 0..WIDTH {
         for row in 0..HEIGHT {
@@ -26,7 +33,7 @@ pub fn render_into(buf: &mut [u32]) {
             let v = ((HEIGHT - 1 - row) as f32) / (HEIGHT as f32);
             let ray = Ray::new(origin, lower_left + u * horizontal + v * vertical);
 
-            let color = if let Some(hit_record) = sphere.hits(&ray, 0.0001, std::f32::INFINITY) {
+            let color = if let Some(hit_record) = scene.hits(&ray, 0.0001, std::f32::INFINITY) {
                 let n = (hit_record.normal.unwrap() + Vector3::new(1.0, 1.0, 1.0)) / 2.0;
                 LinSrgb::new(n.x, n.y, n.z)
             } else {
