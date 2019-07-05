@@ -37,7 +37,7 @@ pub struct HitRecord {
     pub normal: Option<Vector3<f32>>,
 }
 
-pub trait Hittable {
+pub trait Hittable: Send + Sync {
     fn hits(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
 }
 

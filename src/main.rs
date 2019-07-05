@@ -3,7 +3,9 @@ mod geometry;
 use minifb::{Window, WindowOptions};
 use nalgebra::Vector3;
 use palette::{LinSrgb, Mix};
+use rayon::prelude::*;
 use std::error::Error;
+use std::sync::{Arc, Mutex};
 
 use geometry::*;
 
@@ -27,8 +29,16 @@ pub fn render_into(buf: &mut [u32]) {
     let scene = HittableList {
         hittables: vec![Box::new(center_sphere), Box::new(floor)],
     };
-    for col in 0..WIDTH {
-        for row in 0..HEIGHT {
+
+    // Since no worker thread will ever write to the same part of the buffer as
+    // another, in *theory* we could just share it directly... but there may be
+    // other issues with that, and in practice just locking to write into it
+    // should give us a speedup.
+    let buf_mutex = Arc::new(Mutex::new(buf));
+    // Render each column in parallel to avoid locking the buffer for each pixel.
+    (0..HEIGHT).into_par_iter().for_each_with(buf_mutex, |buf_mutex, row| {
+        let mut temp = vec![0u32; WIDTH];
+        for col in 0..WIDTH {
             let u = (col as f32) / (WIDTH as f32);
             let v = ((HEIGHT - 1 - row) as f32) / (HEIGHT as f32);
             let ray = Ray::new(origin, lower_left + u * horizontal + v * vertical);
@@ -43,10 +53,12 @@ pub fn render_into(buf: &mut [u32]) {
                 white.mix(&blue, t as f32)
             };
             let color = color.into_format::<u8>();
-            buf[row * WIDTH + col] =
+            temp[col] =
                 (color.red as u32) << 16 | (color.green as u32) << 8 | (color.blue as u32) << 0;
         }
-    }
+        let mut buf = buf_mutex.lock().unwrap();
+        buf[row * WIDTH .. row * WIDTH + WIDTH].copy_from_slice(&temp);
+    });
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -57,8 +69,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     render_into(&mut buffer);
     let elapsed = now.elapsed();
     window.update_with_buffer(&buffer)?;
-    println!("Rendered in {:?} ({:?} per pixel)", elapsed, elapsed / ((WIDTH * HEIGHT) as u32));
-
+    println!(
+        "Rendered in {:?} ({:?} per pixel)",
+        elapsed,
+        elapsed / ((WIDTH * HEIGHT) as u32)
+    );
 
     while window.is_open() && !window.is_key_down(minifb::Key::Escape) {
         window.update();
