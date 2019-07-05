@@ -101,7 +101,7 @@ pub struct Camera {
     pub lower_left: Vector3<f32>,
     pub horizontal: Vector3<f32>,
     pub vertical: Vector3<f32>,
-    pub origin: Vector3<f32>
+    pub origin: Vector3<f32>,
 }
 
 impl Camera {
@@ -109,6 +109,28 @@ impl Camera {
     /// 1.0 is the farthest along that axis (i.e., they will *not* have the same
     /// scale).
     pub fn ray(&self, u: f32, v: f32) -> Ray {
-        Ray::new(self.origin, self.lower_left + u * self.horizontal + v * self.vertical - self.origin)
+        Ray::new(
+            self.origin,
+            self.lower_left + u * self.horizontal + v * self.vertical - self.origin,
+        )
+    }
+}
+
+/// Samples a random point on the unit sphere. Note that this is *not* the same
+/// as `rand::distributions::UnitSphereSurface`, which samples from the
+/// *surface*.
+#[derive(Clone, Copy, Debug)]
+pub struct UnitSphere;
+
+impl rand::distributions::Distribution<[f32; 3]> for UnitSphere {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> [f32; 3] {
+        loop {
+            let x = rng.gen();
+            let y = rng.gen();
+            let z = rng.gen();
+            if x * x + y * y + z * z <= 1.0 {
+                return [x, y, z];
+            }
+        }
     }
 }
