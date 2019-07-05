@@ -53,8 +53,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut window = Window::new("lufasu", WIDTH, HEIGHT, WindowOptions::default())?;
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let now = std::time::Instant::now();
     render_into(&mut buffer);
+    let elapsed = now.elapsed();
     window.update_with_buffer(&buffer)?;
+    println!("Rendered in {:?} ({:?} per pixel)", elapsed, elapsed / ((WIDTH * HEIGHT) as u32));
+
 
     while window.is_open() && !window.is_key_down(minifb::Key::Escape) {
         window.update();
