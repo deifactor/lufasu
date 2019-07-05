@@ -50,8 +50,6 @@ pub fn render_into(buf: &mut [u32]) {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let v: Vector3<f32> = Vector3::new(0.0, 0.0, 0.0);
-    v.normalize();
     let mut window = Window::new("lufasu", WIDTH, HEIGHT, WindowOptions::default())?;
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
