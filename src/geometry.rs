@@ -1,4 +1,5 @@
 use crate::material::*;
+use enum_dispatch::enum_dispatch;
 use nalgebra::Vector3;
 
 #[derive(Debug)]
@@ -37,18 +38,26 @@ pub struct HitRecord<'a> {
     // Surface normal at the hitpoint. This is optional because some objects,
     // like fog, can be hit but don't have normals.
     pub normal: Option<Vector3<f32>>,
-    pub material: &'a Box<dyn Material>,
+    pub material: &'a MaterialEnum,
 }
 
+#[enum_dispatch]
 pub trait Hittable: std::fmt::Debug + Send + Sync {
     fn hits(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+}
+
+#[enum_dispatch(Hittable)]
+#[derive(Debug)]
+pub enum HittableEnum {
+    Sphere,
+    HittableList,
 }
 
 #[derive(Debug)]
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
-    pub material: Box<dyn Material>,
+    pub material: MaterialEnum,
 }
 
 impl Hittable for Sphere {
@@ -82,7 +91,7 @@ impl Hittable for Sphere {
 // first hitpoint among any elements.
 #[derive(Debug)]
 pub struct HittableList {
-    pub hittables: Vec<Box<dyn Hittable>>,
+    pub hittables: Vec<HittableEnum>,
 }
 
 impl Hittable for HittableList {
@@ -109,7 +118,7 @@ pub struct Camera {
     origin: Vector3<f32>,
     u: Vector3<f32>,
     v: Vector3<f32>,
-    lens_radius: f32
+    lens_radius: f32,
 }
 
 impl Camera {
@@ -120,7 +129,7 @@ impl Camera {
         vertical_fov: f32,
         aspect_ratio: f32,
         aperture: f32,
-        focus_distance: f32
+        focus_distance: f32,
     ) -> Self {
         let half_height = (vertical_fov / 2.0).tan();
         let half_width = aspect_ratio * half_height;
@@ -131,11 +140,11 @@ impl Camera {
         Self {
             lower_left,
             horizontal: 2.0 * half_width * focus_distance * u,
-            vertical: 2.0 * half_height * focus_distance *v,
+            vertical: 2.0 * half_height * focus_distance * v,
             origin,
             u,
             v,
-            lens_radius: aperture / 2.0
+            lens_radius: aperture / 2.0,
         }
     }
 
@@ -144,7 +153,8 @@ impl Camera {
     /// scale).
     pub fn ray<R: rand::Rng + ?Sized>(&self, s: f32, t: f32, rng: &mut R) -> Ray {
         let lens_position: [f32; 2] = rng.sample(rand_distr::UnitDisc);
-        let lens_offset = self.lens_radius * (lens_position[0] * self.u + lens_position[1] * self.v);
+        let lens_offset =
+            self.lens_radius * (lens_position[0] * self.u + lens_position[1] * self.v);
         Ray::new(
             self.origin + lens_offset,
             self.lower_left + s * self.horizontal + t * self.vertical - self.origin - lens_offset,

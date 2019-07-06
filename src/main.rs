@@ -13,8 +13,8 @@ use std::sync::{Arc, Mutex};
 use geometry::*;
 use material::*;
 
-const WIDTH: usize = 800;
-const HEIGHT: usize = 400;
+const WIDTH: usize = 200;
+const HEIGHT: usize = 100;
 // Number of per-pixel samples.
 const SAMPLE_COUNT: usize = 100;
 // Maximum number of bounces to use. After this, we assume the ray will be
@@ -44,7 +44,7 @@ pub fn color<T: Hittable, R: rand::Rng>(
 }
 
 fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
-    let spheres = iproduct!(-11..11, -11..11).filter_map(|(x, z)| -> Option<Box<dyn Hittable>> {
+    let spheres = iproduct!(-11..11, -11..11).filter_map(|(x, z)| -> Option<HittableEnum> {
         let center = Vector3::<f32>::new(
             (x as f32) + rng.gen::<f32>() * 0.9,
             0.2,
@@ -52,9 +52,9 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
         );
         if (center - Vector3::new(4.0, 0.2, 0.0)).norm() > 0.9 {
             let material_choice: f32 = rng.gen();
-            let material: Box<dyn Material> = if material_choice < 0.8 {
+            let material = if material_choice < 0.8 {
                 // Diffuse.
-                Box::new(Lambertian {
+                MaterialEnum::from(Lambertian {
                     albedo: LinSrgb::new(
                         rng.gen::<f32>() * rng.gen::<f32>(),
                         rng.gen::<f32>() * rng.gen::<f32>(),
@@ -63,7 +63,7 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
                 })
             } else if material_choice < 0.95 {
                 // Metal.
-                Box::new(Metal {
+                MaterialEnum::from(Metal {
                     albedo: LinSrgb::new(
                         0.5 + rng.gen::<f32>() / 2.0,
                         0.5 + rng.gen::<f32>() / 2.0,
@@ -72,13 +72,16 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
                     fuzz: rng.gen::<f32>() / 2.0,
                 })
             } else {
-                Box::new(Dielectric { index: 1.5 })
+                MaterialEnum::from(Dielectric { index: 1.5 })
             };
-            Some(Box::new(Sphere {
-                center,
-                radius: 0.2,
-                material,
-            }))
+            Some(
+                Sphere {
+                    center,
+                    radius: 0.2,
+                    material,
+                }
+                .into(),
+            )
         } else {
             None
         }
@@ -87,26 +90,26 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
         Sphere {
             center: Vector3::new(0.0, -1000.0, 0.0),
             radius: 1000.0,
-            material: Box::new(Lambertian {
+            material: MaterialEnum::from(Lambertian {
                 albedo: LinSrgb::new(0.5, 0.5, 0.5),
             }),
         },
         Sphere {
             center: Vector3::new(0.0, 1.0, 0.0),
             radius: 1.0,
-            material: Box::new(Dielectric { index: 1.5 }),
+            material: MaterialEnum::from(Dielectric { index: 1.5 }),
         },
         Sphere {
             center: Vector3::new(-4.0, 1.0, 0.0),
             radius: 1.0,
-            material: Box::new(Lambertian {
+            material: MaterialEnum::from(Lambertian {
                 albedo: LinSrgb::new(0.4, 0.2, 0.1),
             }),
         },
         Sphere {
             center: Vector3::new(4.0, 1.0, 0.0),
             radius: 1.0,
-            material: Box::new(Metal {
+            material: MaterialEnum::from(Metal {
                 albedo: LinSrgb::new(0.7, 0.6, 0.5),
                 fuzz: 0.0,
             }),
@@ -114,11 +117,7 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
     ];
     HittableList {
         hittables: spheres
-            .chain(
-                others
-                    .into_iter()
-                    .map(|s| -> Box<dyn Hittable> { Box::new(s) }),
-            )
+            .chain(others.into_iter().map(|s| s.into()))
             .collect(),
     }
 }
@@ -134,7 +133,7 @@ pub fn render_into(buf: &mut [u32]) {
         15.0f32.to_radians(),
         (WIDTH as f32) / (HEIGHT as f32),
         0.2,
-        origin.norm()
+        origin.norm(),
     );
 
     // Since no worker thread will ever write to the same part of the buffer as

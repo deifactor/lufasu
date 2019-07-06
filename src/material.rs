@@ -1,4 +1,5 @@
 use crate::geometry::*;
+use enum_dispatch::enum_dispatch;
 use nalgebra::Vector3;
 use palette::LinSrgb;
 use rand::prelude::*;
@@ -11,6 +12,7 @@ pub struct Scattering {
     pub scattered: Ray,
 }
 
+#[enum_dispatch]
 pub trait Material: std::fmt::Debug + Send + Sync {
     /// If this returns None, the ray did not scatter at all. Useful for
     /// transparent materials, fogs, etc.
@@ -20,6 +22,14 @@ pub trait Material: std::fmt::Debug + Send + Sync {
         hit_record: &HitRecord,
         rng: &mut dyn rand::RngCore,
     ) -> Option<Scattering>;
+}
+
+#[enum_dispatch(Material)]
+#[derive(Debug)]
+pub enum MaterialEnum {
+    Lambertian,
+    Dielectric,
+    Metal,
 }
 
 #[derive(Debug)]
