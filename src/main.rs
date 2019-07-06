@@ -55,7 +55,11 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
             let material = if material_choice < 0.8 {
                 // Diffuse.
                 MaterialEnum::from(Lambertian {
-                    albedo: LinSrgb::new(rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>()),
+                    albedo: LinSrgb::new(
+                        rng.gen::<f32>().powi(2),
+                        rng.gen::<f32>().powi(2),
+                        rng.gen::<f32>().powi(2),
+                    ),
                 })
             } else if material_choice < 0.95 {
                 // Metal.
