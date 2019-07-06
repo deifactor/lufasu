@@ -69,7 +69,7 @@ impl Hittable for Sphere {
         let discriminant = b * b - 4.0 * c;
         if discriminant >= 0.0 {
             // Return the first intersection in the relevant range.
-            for sign in [-1.0, 1.0].into_iter() {
+            for sign in [-1.0, 1.0].iter() {
                 let t = (-b + discriminant.sqrt() * sign) / 2.0;
                 if t_min <= t && t < t_max {
                     let pos = ray.at(t);

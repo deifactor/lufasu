@@ -113,7 +113,7 @@ impl Material for Dielectric {
         };
         let direction =
             if let Some(refracted) = refract(ray.direction(), &outward_normal, index_ratio) {
-                if rng.gen_bool(self.schlick(cosine) as f64) {
+                if rng.gen_bool(f64::from(self.schlick(cosine))) {
                     reflect(ray.direction(), &normal)
                 } else {
                     refracted

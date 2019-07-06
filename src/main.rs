@@ -139,7 +139,7 @@ pub fn render() -> Vec<u32> {
     (0..WIDTH * HEIGHT)
         .into_par_iter()
         .map_init(
-            || rand::thread_rng(),
+            rand::thread_rng,
             |mut rng, index| {
                 let row = index / WIDTH;
                 let col = index % WIDTH;
@@ -155,7 +155,7 @@ pub fn render() -> Vec<u32> {
                     / (SAMPLE_COUNT as f32);
 
                 let color = Srgb::from_linear(color).into_format::<u8>();
-                (color.red as u32) << 16 | (color.green as u32) << 8 | (color.blue as u32) << 0
+                u32::from(color.red) << 16 | u32::from(color.green) << 8 | u32::from(color.blue)
             },
         )
         .collect()
