@@ -150,9 +150,9 @@ pub struct UnitSphere;
 impl rand::distributions::Distribution<[f32; 3]> for UnitSphere {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> [f32; 3] {
         loop {
-            let x = rng.gen();
-            let y = rng.gen();
-            let z = rng.gen();
+            let x = 2.0 * rng.gen::<f32>() - 1.0;
+            let y = 2.0 * rng.gen::<f32>() - 1.0;
+            let z = 2.0 * rng.gen::<f32>() - 1.0;
             if x * x + y * y + z * z <= 1.0 {
                 return [x, y, z];
             }
