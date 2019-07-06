@@ -5,6 +5,7 @@ use itertools::iproduct;
 use minifb::{Window, WindowOptions};
 use nalgebra::Vector3;
 use palette::{LinSrgb, Mix, Srgb};
+use rand::distributions::Uniform;
 use rand::prelude::*;
 use rayon::prelude::*;
 use std::error::Error;
@@ -45,30 +46,26 @@ pub fn color<T: Hittable, R: rand::Rng>(
 fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
     let spheres = iproduct!(-11..11, -11..11).filter_map(|(x, z)| -> Option<HittableEnum> {
         let center = Vector3::<f32>::new(
-            (x as f32) + rng.gen::<f32>() * 0.9,
+            (x as f32) + rng.sample(Uniform::new(0.0, 0.9)),
             0.2,
-            (z as f32) + rng.gen::<f32>() * 0.9,
+            (z as f32) + rng.sample(Uniform::new(0.0, 0.9)),
         );
         if (center - Vector3::new(4.0, 0.2, 0.0)).norm() > 0.9 {
             let material_choice: f32 = rng.gen();
             let material = if material_choice < 0.8 {
                 // Diffuse.
                 MaterialEnum::from(Lambertian {
-                    albedo: LinSrgb::new(
-                        rng.gen::<f32>() * rng.gen::<f32>(),
-                        rng.gen::<f32>() * rng.gen::<f32>(),
-                        rng.gen::<f32>() * rng.gen::<f32>(),
-                    ),
+                    albedo: LinSrgb::new(rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>()),
                 })
             } else if material_choice < 0.95 {
                 // Metal.
                 MaterialEnum::from(Metal {
                     albedo: LinSrgb::new(
-                        0.5 + rng.gen::<f32>() / 2.0,
-                        0.5 + rng.gen::<f32>() / 2.0,
-                        0.5 + rng.gen::<f32>() / 2.0,
+                        rng.sample(Uniform::new(0.5, 1.0)),
+                        rng.sample(Uniform::new(0.5, 1.0)),
+                        rng.sample(Uniform::new(0.5, 1.0)),
                     ),
-                    fuzz: rng.gen::<f32>() / 2.0,
+                    fuzz: rng.sample(Uniform::new(0.0, 0.5)),
                 })
             } else {
                 MaterialEnum::from(Dielectric { index: 1.5 })
