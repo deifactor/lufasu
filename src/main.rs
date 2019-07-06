@@ -44,7 +44,7 @@ pub fn color<T: Hittable, R: rand::Rng>(
 }
 
 fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
-    let spheres = iproduct!(-11..11, -3..3).filter_map(|(x, z)| -> Option<Box<dyn Hittable>> {
+    let spheres = iproduct!(-11..11, -11..11).filter_map(|(x, z)| -> Option<Box<dyn Hittable>> {
         let center = Vector3::<f32>::new(
             (x as f32) + rng.gen::<f32>() * 0.9,
             0.2,
