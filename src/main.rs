@@ -100,7 +100,7 @@ pub fn render_into(buf: &mut [u32]) {
                     .fold(LinSrgb::new(0.0, 0.0, 0.0), |a, b| a + b)
                     / (SAMPLE_COUNT as f32);
 
-                let color = color.into_format::<u8>();
+                let color = Srgb::from_linear(color).into_format::<u8>();
                 temp[col] =
                     (color.red as u32) << 16 | (color.green as u32) << 8 | (color.blue as u32) << 0;
             }
