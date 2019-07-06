@@ -2,6 +2,7 @@ use crate::geometry::*;
 use nalgebra::Vector3;
 use palette::LinSrgb;
 use rand::prelude::*;
+use rand_distr;
 
 pub struct Scattering {
     /// The outgoing ray should have its color multiplied by this factor.
@@ -33,7 +34,8 @@ impl Material for Lambertian {
         hit_record: &HitRecord,
         rng: &mut dyn rand::RngCore,
     ) -> Option<Scattering> {
-        let direction = hit_record.normal.unwrap() + Vector3::<f32>::from(rng.sample(UnitSphere));
+        let direction =
+            hit_record.normal.unwrap() + Vector3::<f32>::from(rng.sample(rand_distr::UnitSphere));
         Some(Scattering {
             attenuation: self.albedo,
             scattered: Ray::new(hit_record.pos, direction),
@@ -56,7 +58,7 @@ impl Material for Metal {
     ) -> Option<Scattering> {
         let normal = hit_record.normal.unwrap();
         let reflected = reflect(ray.direction(), &normal)
-            + Vector3::<f32>::from(rng.sample(UnitSphere)) * self.fuzz;
+            + Vector3::<f32>::from(rng.sample(rand_distr::UnitSphere)) * self.fuzz;
         let scattered = Ray::new(hit_record.pos, reflected);
         if scattered.direction().dot(&normal) > 0.0 {
             Some(Scattering {

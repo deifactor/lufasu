@@ -107,6 +107,9 @@ pub struct Camera {
     horizontal: Vector3<f32>,
     vertical: Vector3<f32>,
     origin: Vector3<f32>,
+    u: Vector3<f32>,
+    v: Vector3<f32>,
+    lens_radius: f32
 }
 
 impl Camera {
@@ -116,46 +119,35 @@ impl Camera {
         up: Vector3<f32>,
         vertical_fov: f32,
         aspect_ratio: f32,
+        aperture: f32,
+        focus_distance: f32
     ) -> Self {
         let half_height = (vertical_fov / 2.0).tan();
         let half_width = aspect_ratio * half_height;
         let w = (origin - look_at).normalize();
         let u = up.cross(&w).normalize();
         let v = w.cross(&u);
+        let lower_left = origin - focus_distance * (half_width * u + half_height * v + w);
         Self {
-            lower_left: origin - half_width * u - half_height * v - w,
-            horizontal: 2.0 * half_width * u,
-            vertical: 2.0 * half_height * v,
+            lower_left,
+            horizontal: 2.0 * half_width * focus_distance * u,
+            vertical: 2.0 * half_height * focus_distance *v,
             origin,
+            u,
+            v,
+            lens_radius: aperture / 2.0
         }
     }
 
     /// The relevant ray to render. u and v are coordinates in screenspace, where
     /// 1.0 is the farthest along that axis (i.e., they will *not* have the same
     /// scale).
-    pub fn ray(&self, u: f32, v: f32) -> Ray {
+    pub fn ray<R: rand::Rng + ?Sized>(&self, s: f32, t: f32, rng: &mut R) -> Ray {
+        let lens_position: [f32; 2] = rng.sample(rand_distr::UnitDisc);
+        let lens_offset = self.lens_radius * (lens_position[0] * self.u + lens_position[1] * self.v);
         Ray::new(
-            self.origin,
-            self.lower_left + u * self.horizontal + v * self.vertical - self.origin,
+            self.origin + lens_offset,
+            self.lower_left + s * self.horizontal + t * self.vertical - self.origin - lens_offset,
         )
-    }
-}
-
-/// Samples a random point on the unit sphere. Note that this is *not* the same
-/// as `rand::distributions::UnitSphereSurface`, which samples from the
-/// *surface*.
-#[derive(Clone, Copy, Debug)]
-pub struct UnitSphere;
-
-impl rand::distributions::Distribution<[f32; 3]> for UnitSphere {
-    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> [f32; 3] {
-        loop {
-            let x = 2.0 * rng.gen::<f32>() - 1.0;
-            let y = 2.0 * rng.gen::<f32>() - 1.0;
-            let z = 2.0 * rng.gen::<f32>() - 1.0;
-            if x * x + y * y + z * z <= 1.0 {
-                return [x, y, z];
-            }
-        }
     }
 }

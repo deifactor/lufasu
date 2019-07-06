@@ -16,7 +16,7 @@ use material::*;
 const WIDTH: usize = 800;
 const HEIGHT: usize = 400;
 // Number of per-pixel samples.
-const SAMPLE_COUNT: usize = 50;
+const SAMPLE_COUNT: usize = 100;
 // Maximum number of bounces to use. After this, we assume the ray will be
 // black.
 const BOUNCES: usize = 50;
@@ -44,7 +44,7 @@ pub fn color<T: Hittable, R: rand::Rng>(
 }
 
 fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
-    let spheres = iproduct!(-11..11, -11..11).filter_map(|(x, z)| -> Option<Box<dyn Hittable>> {
+    let spheres = iproduct!(-11..11, -3..3).filter_map(|(x, z)| -> Option<Box<dyn Hittable>> {
         let center = Vector3::<f32>::new(
             (x as f32) + rng.gen::<f32>() * 0.9,
             0.2,
@@ -126,12 +126,15 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
 pub fn render_into(buf: &mut [u32]) {
     let scene = construct_scene(&mut rand::thread_rng());
 
+    let origin = Vector3::new(16.0, 2.0, 4.0);
     let camera = Camera::new(
-        Vector3::new(16.0, 2.0, 4.0),
+        origin,
         Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 1.0, 0.0),
         15.0f32.to_radians(),
         (WIDTH as f32) / (HEIGHT as f32),
+        0.2,
+        origin.norm()
     );
 
     // Since no worker thread will ever write to the same part of the buffer as
@@ -151,7 +154,7 @@ pub fn render_into(buf: &mut [u32]) {
                     .map(|_| {
                         let u = (col as f32 + rng.gen::<f32>()) / (WIDTH as f32);
                         let v = ((HEIGHT - 1 - row) as f32 + rng.gen::<f32>()) / (HEIGHT as f32);
-                        let ray = camera.ray(u, v);
+                        let ray = camera.ray(u, v, &mut rng);
                         color(&ray, &scene, 0, &mut rng)
                     })
                     .fold(LinSrgb::new(0.0, 0.0, 0.0), |a, b| a + b)
