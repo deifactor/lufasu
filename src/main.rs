@@ -15,7 +15,7 @@ use material::*;
 const WIDTH: usize = 800;
 const HEIGHT: usize = 400;
 // Number of per-pixel samples.
-const SAMPLE_COUNT: usize = 1000;
+const SAMPLE_COUNT: usize = 100;
 // Maximum number of bounces to use. After this, we assume the ray will be
 // black.
 const BOUNCES: usize = 50;
@@ -62,15 +62,14 @@ pub fn render_into(buf: &mut [u32]) {
             Box::new(Sphere {
                 center: Vector3::new(1.0, 0.0, -1.0),
                 radius: 0.5,
-                material: Box::new(Metal {
-                    albedo: LinSrgb::new(0.8, 0.6, 0.2),
-                }),
+                material: Box::new(Dielectric { index: 1.5 }),
             }),
             Box::new(Sphere {
                 center: Vector3::new(-1.0, 0.0, -1.0),
                 radius: 0.5,
                 material: Box::new(Metal {
                     albedo: LinSrgb::new(0.8, 0.8, 0.8),
+                    fuzz: 1.0
                 }),
             }),
         ],
