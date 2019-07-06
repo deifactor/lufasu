@@ -1,6 +1,7 @@
 use crate::material::*;
 use nalgebra::Vector3;
 
+#[derive(Debug)]
 pub struct Ray {
     origin: Vector3<f32>,
     // Must be normalized.
@@ -39,10 +40,11 @@ pub struct HitRecord<'a> {
     pub material: &'a Box<dyn Material>,
 }
 
-pub trait Hittable: Send + Sync {
+pub trait Hittable: std::fmt::Debug + Send + Sync {
     fn hits(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
 }
 
+#[derive(Debug)]
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
@@ -78,6 +80,7 @@ impl Hittable for Sphere {
 
 // A convenient way to hit-test a bunch of objects. The returned hit is the
 // first hitpoint among any elements.
+#[derive(Debug)]
 pub struct HittableList {
     pub hittables: Vec<Box<dyn Hittable>>,
 }
@@ -107,14 +110,23 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(vertical_fov: f32, aspect_ratio: f32) -> Self {
+    pub fn new(
+        origin: Vector3<f32>,
+        look_at: Vector3<f32>,
+        up: Vector3<f32>,
+        vertical_fov: f32,
+        aspect_ratio: f32,
+    ) -> Self {
         let half_height = (vertical_fov / 2.0).tan();
         let half_width = aspect_ratio * half_height;
+        let w = (origin - look_at).normalize();
+        let u = up.cross(&w).normalize();
+        let v = w.cross(&u);
         Self {
-            lower_left: Vector3::new(-half_width, -half_height, -1.0),
-            horizontal: Vector3::new(2.0 * half_width, 0.0, 0.0),
-            vertical: Vector3::new(0.0, 2.0 * half_height, 0.0),
-            origin: Vector3::new(0.0, 0.0, 0.0),
+            lower_left: origin - half_width * u - half_height * v - w,
+            horizontal: 2.0 * half_width * u,
+            vertical: 2.0 * half_height * v,
+            origin,
         }
     }
 

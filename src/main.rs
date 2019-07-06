@@ -1,9 +1,10 @@
 mod geometry;
 mod material;
 
+use itertools::iproduct;
 use minifb::{Window, WindowOptions};
 use nalgebra::Vector3;
-use palette::{LinSrgb, Mix};
+use palette::{LinSrgb, Mix, Srgb};
 use rand::prelude::*;
 use rayon::prelude::*;
 use std::error::Error;
@@ -15,7 +16,7 @@ use material::*;
 const WIDTH: usize = 800;
 const HEIGHT: usize = 400;
 // Number of per-pixel samples.
-const SAMPLE_COUNT: usize = 100;
+const SAMPLE_COUNT: usize = 50;
 // Maximum number of bounces to use. After this, we assume the ray will be
 // black.
 const BOUNCES: usize = 50;
@@ -42,40 +43,96 @@ pub fn color<T: Hittable, R: rand::Rng>(
     }
 }
 
-pub fn render_into(buf: &mut [u32]) {
-    let scene = HittableList {
-        hittables: vec![
-            Box::new(Sphere {
-                center: Vector3::new(0.0, 0.0, -1.0),
-                radius: 0.5,
-                material: Box::new(Lambertian {
-                    albedo: LinSrgb::new(0.8, 0.3, 0.3),
-                }),
+fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
+    let spheres = iproduct!(-11..11, -11..11).filter_map(|(x, z)| -> Option<Box<dyn Hittable>> {
+        let center = Vector3::<f32>::new(
+            (x as f32) + rng.gen::<f32>() * 0.9,
+            0.2,
+            (z as f32) + rng.gen::<f32>() * 0.9,
+        );
+        if (center - Vector3::new(4.0, 0.2, 0.0)).norm() > 0.9 {
+            let material_choice: f32 = rng.gen();
+            let material: Box<dyn Material> = if material_choice < 0.8 {
+                // Diffuse.
+                Box::new(Lambertian {
+                    albedo: LinSrgb::new(
+                        rng.gen::<f32>() * rng.gen::<f32>(),
+                        rng.gen::<f32>() * rng.gen::<f32>(),
+                        rng.gen::<f32>() * rng.gen::<f32>(),
+                    ),
+                })
+            } else if material_choice < 0.95 {
+                // Metal.
+                Box::new(Metal {
+                    albedo: LinSrgb::new(
+                        0.5 + rng.gen::<f32>() / 2.0,
+                        0.5 + rng.gen::<f32>() / 2.0,
+                        0.5 + rng.gen::<f32>() / 2.0,
+                    ),
+                    fuzz: rng.gen::<f32>() / 2.0,
+                })
+            } else {
+                Box::new(Dielectric { index: 1.5 })
+            };
+            Some(Box::new(Sphere {
+                center,
+                radius: 0.2,
+                material,
+            }))
+        } else {
+            None
+        }
+    });
+    let others: Vec<Sphere> = vec![
+        Sphere {
+            center: Vector3::new(0.0, -1000.0, 0.0),
+            radius: 1000.0,
+            material: Box::new(Lambertian {
+                albedo: LinSrgb::new(0.5, 0.5, 0.5),
             }),
-            Box::new(Sphere {
-                center: Vector3::new(0.0, -100.5, -1.0),
-                radius: 100.0,
-                material: Box::new(Lambertian {
-                    albedo: LinSrgb::new(0.8, 0.8, 0.0),
-                }),
+        },
+        Sphere {
+            center: Vector3::new(0.0, 1.0, 0.0),
+            radius: 1.0,
+            material: Box::new(Dielectric { index: 1.5 }),
+        },
+        Sphere {
+            center: Vector3::new(-4.0, 1.0, 0.0),
+            radius: 1.0,
+            material: Box::new(Lambertian {
+                albedo: LinSrgb::new(0.4, 0.2, 0.1),
             }),
-            Box::new(Sphere {
-                center: Vector3::new(1.0, 0.0, -1.0),
-                radius: 0.5,
-                material: Box::new(Dielectric { index: 1.5 }),
+        },
+        Sphere {
+            center: Vector3::new(4.0, 1.0, 0.0),
+            radius: 1.0,
+            material: Box::new(Metal {
+                albedo: LinSrgb::new(0.7, 0.6, 0.5),
+                fuzz: 0.0,
             }),
-            Box::new(Sphere {
-                center: Vector3::new(-1.0, 0.0, -1.0),
-                radius: 0.5,
-                material: Box::new(Metal {
-                    albedo: LinSrgb::new(0.8, 0.8, 0.8),
-                    fuzz: 1.0,
-                }),
-            }),
-        ],
-    };
+        },
+    ];
+    HittableList {
+        hittables: spheres
+            .chain(
+                others
+                    .into_iter()
+                    .map(|s| -> Box<dyn Hittable> { Box::new(s) }),
+            )
+            .collect(),
+    }
+}
 
-    let camera = Camera::new(90.0f32.to_radians(), (WIDTH as f32) / (HEIGHT as f32));
+pub fn render_into(buf: &mut [u32]) {
+    let scene = construct_scene(&mut rand::thread_rng());
+
+    let camera = Camera::new(
+        Vector3::new(16.0, 2.0, 4.0),
+        Vector3::new(0.0, 0.0, 0.0),
+        Vector3::new(0.0, 1.0, 0.0),
+        15.0f32.to_radians(),
+        (WIDTH as f32) / (HEIGHT as f32),
+    );
 
     // Since no worker thread will ever write to the same part of the buffer as
     // another, in *theory* we could just share it directly... but there may be

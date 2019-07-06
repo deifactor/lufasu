@@ -10,7 +10,7 @@ pub struct Scattering {
     pub scattered: Ray,
 }
 
-pub trait Material: Send + Sync {
+pub trait Material: std::fmt::Debug + Send + Sync {
     /// If this returns None, the ray did not scatter at all. Useful for
     /// transparent materials, fogs, etc.
     fn scatter(
@@ -21,6 +21,7 @@ pub trait Material: Send + Sync {
     ) -> Option<Scattering>;
 }
 
+#[derive(Debug)]
 pub struct Lambertian {
     pub albedo: palette::LinSrgb,
 }
@@ -40,6 +41,7 @@ impl Material for Lambertian {
     }
 }
 
+#[derive(Debug)]
 pub struct Metal {
     pub albedo: palette::LinSrgb,
     pub fuzz: f32,
@@ -67,6 +69,7 @@ impl Material for Metal {
     }
 }
 
+#[derive(Debug)]
 pub struct Dielectric {
     pub index: f32,
 }
