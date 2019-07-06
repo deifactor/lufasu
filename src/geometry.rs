@@ -99,11 +99,14 @@ impl Hittable for HittableList {
         // There's probably a nicer way to do this with iterators, but I can't
         // quite find it.
         let mut best_rec: Option<HitRecord> = None;
-        for rec in self.hittables.iter().map(|h| h.hits(ray, t_min, t_max)) {
-            if let Some(rec) = rec {
-                if rec.t < best_rec.as_ref().map_or(std::f32::INFINITY, |r| r.t) {
+        let mut best_t = t_max;
+        for hittable in &self.hittables {
+            if let Some(rec) = hittable.hits(ray, t_min, best_t) {
+                if rec.t < best_t {
+                    best_t = rec.t;
                     best_rec = Some(rec);
                 }
+
             }
         }
         best_rec
