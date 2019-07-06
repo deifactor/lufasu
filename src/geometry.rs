@@ -64,7 +64,7 @@ impl Hittable for Sphere {
     fn hits(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         // t^2 + 2 * t(axis * direction) * t + axis * axis = radius^2; solve for t.
         let axis = ray.origin() - self.center;
-        let b = 2.0 * (axis.dot(ray.direction()));
+        let b = 2.0 * axis.dot(ray.direction());
         let c = axis.dot(&axis) - self.radius * self.radius;
         let discriminant = b * b - 4.0 * c;
         if discriminant >= 0.0 {
@@ -73,7 +73,7 @@ impl Hittable for Sphere {
                 let t = (-b + discriminant.sqrt() * sign) / 2.0;
                 if t_min <= t && t < t_max {
                     let pos = ray.at(t);
-                    let normal = (pos - self.center).normalize();
+                    let normal = (pos - self.center) / self.radius;
                     return Some(HitRecord {
                         t,
                         pos,
