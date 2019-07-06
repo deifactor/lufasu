@@ -8,7 +8,6 @@ use palette::{LinSrgb, Mix, Srgb};
 use rand::prelude::*;
 use rayon::prelude::*;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 
 use geometry::*;
 use material::*;
@@ -122,7 +121,7 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
     }
 }
 
-pub fn render_into(buf: &mut [u32]) {
+pub fn render() -> Vec<u32> {
     let scene = construct_scene(&mut rand::thread_rng());
 
     let origin = Vector3::new(16.0, 2.0, 4.0);
@@ -136,18 +135,13 @@ pub fn render_into(buf: &mut [u32]) {
         origin.norm(),
     );
 
-    // Since no worker thread will ever write to the same part of the buffer as
-    // another, in *theory* we could just share it directly... but there may be
-    // other issues with that, and in practice just locking to write into it
-    // should give us a speedup.
-    let buf_mutex = Arc::new(Mutex::new(buf));
-    // Render each column in parallel to avoid locking the buffer for each pixel.
-    (0..HEIGHT)
+    (0..WIDTH * HEIGHT)
         .into_par_iter()
-        .for_each_with(buf_mutex, |buf_mutex, row| {
-            let mut rng = rand::thread_rng();
-            let mut temp = vec![0u32; WIDTH];
-            for col in 0..WIDTH {
+        .map_init(
+            || rand::thread_rng(),
+            |mut rng, index| {
+                let row = index / WIDTH;
+                let col = index % WIDTH;
                 // Sample SAMPLE_COUNT times per pixel, then average them.
                 let color: palette::LinSrgb = (0..SAMPLE_COUNT)
                     .map(|_| {
@@ -160,20 +154,17 @@ pub fn render_into(buf: &mut [u32]) {
                     / (SAMPLE_COUNT as f32);
 
                 let color = Srgb::from_linear(color).into_format::<u8>();
-                temp[col] =
-                    (color.red as u32) << 16 | (color.green as u32) << 8 | (color.blue as u32) << 0;
-            }
-            let mut buf = buf_mutex.lock().unwrap();
-            buf[row * WIDTH..row * WIDTH + WIDTH].copy_from_slice(&temp);
-        });
+                (color.red as u32) << 16 | (color.green as u32) << 8 | (color.blue as u32) << 0
+            },
+        )
+        .collect()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut window = Window::new("lufasu", WIDTH, HEIGHT, WindowOptions::default())?;
 
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let now = std::time::Instant::now();
-    render_into(&mut buffer);
+    let buffer = render();
     let elapsed = now.elapsed();
     window.update_with_buffer(&buffer)?;
     println!(
