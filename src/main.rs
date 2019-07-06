@@ -121,15 +121,15 @@ fn construct_scene<R: rand::Rng>(rng: &mut R) -> HittableList {
 pub fn render() -> Vec<u32> {
     let scene = construct_scene(&mut rand::thread_rng());
 
-    let origin = Vector3::new(16.0, 2.0, 4.0);
+    let origin = Vector3::new(13.0, 2.0, 3.0);
     let camera = Camera::new(
         origin,
         Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 1.0, 0.0),
-        15.0f32.to_radians(),
+        20.0f32.to_radians(),
         (WIDTH as f32) / (HEIGHT as f32),
-        0.2,
-        origin.norm(),
+        0.1,
+        10.0,
     );
 
     (0..WIDTH * HEIGHT)
