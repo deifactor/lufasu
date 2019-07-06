@@ -98,17 +98,26 @@ impl Hittable for HittableList {
     }
 }
 
-/// The camera's render plane is located at `lower_left`, with `horizontal` and
-/// `vertical` representing the axes. `origin` is where the camera is looking
-/// from.
+// The camera. Used to compute direction of rays and so on.
 pub struct Camera {
-    pub lower_left: Vector3<f32>,
-    pub horizontal: Vector3<f32>,
-    pub vertical: Vector3<f32>,
-    pub origin: Vector3<f32>,
+    lower_left: Vector3<f32>,
+    horizontal: Vector3<f32>,
+    vertical: Vector3<f32>,
+    origin: Vector3<f32>,
 }
 
 impl Camera {
+    pub fn new(vertical_fov: f32, aspect_ratio: f32) -> Self {
+        let half_height = (vertical_fov / 2.0).tan();
+        let half_width = aspect_ratio * half_height;
+        Self {
+            lower_left: Vector3::new(-half_width, -half_height, -1.0),
+            horizontal: Vector3::new(2.0 * half_width, 0.0, 0.0),
+            vertical: Vector3::new(0.0, 2.0 * half_height, 0.0),
+            origin: Vector3::new(0.0, 0.0, 0.0),
+        }
+    }
+
     /// The relevant ray to render. u and v are coordinates in screenspace, where
     /// 1.0 is the farthest along that axis (i.e., they will *not* have the same
     /// scale).

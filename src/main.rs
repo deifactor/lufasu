@@ -69,18 +69,13 @@ pub fn render_into(buf: &mut [u32]) {
                 radius: 0.5,
                 material: Box::new(Metal {
                     albedo: LinSrgb::new(0.8, 0.8, 0.8),
-                    fuzz: 1.0
+                    fuzz: 1.0,
                 }),
             }),
         ],
     };
 
-    let camera = Camera {
-        origin: Vector3::new(0.0, 0.0, 0.0),
-        lower_left: Vector3::new(-2.0, -1.0, -1.0),
-        horizontal: Vector3::new(4.0, 0.0, 0.0),
-        vertical: Vector3::new(0.0, 2.0, 0.0),
-    };
+    let camera = Camera::new(90.0f32.to_radians(), (WIDTH as f32) / (HEIGHT as f32));
 
     // Since no worker thread will ever write to the same part of the buffer as
     // another, in *theory* we could just share it directly... but there may be
